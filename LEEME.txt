@@ -1,0 +1,15 @@
+INFORME TELECONTROL - como usarlo
+
+Una sola vez:
+  Instalar Python desde https://www.python.org/downloads/
+  En el instalador, marcar "Add python.exe to PATH".
+
+Cada dia (cualquiera de las dos formas):
+  A) Arrastrar los dos PDF (rutina y telecontrol) sobre "Generar informe.bat".
+  B) Copiar los dos PDF a la carpeta "pdfs" y hacer doble clic en "Generar informe.bat".
+     Despues de usarlos, sacarlos de "pdfs" para que no se mezclen con los del dia siguiente.
+
+El informe se guarda en la carpeta "informes" y se abre como correo nuevo en Thunderbird.
+Los destinatarios se cargan una sola vez en config.txt (PARA= y CC=).
+Si no encuentra Thunderbird, abre el informe en el Bloc de notas.
+Si al final dice "NO CUADRA" o "ATENCION", revisar a mano los renglones que lista.

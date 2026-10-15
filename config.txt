@@ -1,0 +1,6 @@
+# Destinatarios del correo (separar varios con coma)
+PARA=
+CC=
+
+# Solo si Thunderbird no se abre: ruta completa al programa
+# THUNDERBIRD=C:\Program Files\Mozilla Thunderbird\thunderbird.exe
