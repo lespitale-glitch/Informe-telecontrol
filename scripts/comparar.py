@@ -24,7 +24,7 @@ except ImportError:
 # --- Reglas (ver reglas/reglas.md) -------------------------------------------
 CODIGO_ARTISTICO_MIN = 50000          # material desde 50000 = artística a emitir en el bloque del programa
 TIPOS_PUBLICIDAD = {"1020", "1030"}    # en telecontrol: avisos comerciales de tanda
-TIPOS_NO_PROG = {"1005", "1006"}       # en telecontrol: PNT/menciones; si vienen SIN código, son "no programadas"
+TIPOS_NO_PROG = {"1003", "1005", "1006"}       # en telecontrol: PNT/menciones; si vienen SIN código, son "no programadas"
 EXCLUIR_CODIGOS = set()                # códigos a ignorar siempre (completar en reglas si hace falta)
 
 HORA = r"\d{1,2}:\d{2}:\d{2}"
@@ -152,32 +152,32 @@ def comparar(rutina_txt, tc_txt):
     f_r, progs_r, plan, sin_leer_r, publi_plan = leer_rutina(rutina_txt)
     f_t, progs_t, emitido, no_prog, sin_leer, publi_emit = leer_telecontrol(tc_txt)
 
-    # Un mismo código repetido en el mismo programa cuenta una sola vez
-    vistos, unicos = set(), []
-    for it in plan:
-        k = (it["programa"], it["codigo"])
-        if k not in vistos:
-            vistos.add(k)
-            unicos.append(it)
-
+    # Cada aparición cuenta: si un código está 2 veces en un programa, tienen que salir 2
     plan_count = defaultdict(Counter)
     for it in plan:
         plan_count[it["programa"]][it["codigo"]] += 1
+    excedente = defaultdict(Counter)      # lo que salió de más en cada programa
+    for q in emitido:
+        for c, n in emitido[q].items():
+            if n > plan_count[q][c]:
+                excedente[q][c] = n - plan_count[q][c]
 
     emitidos, no_emitidos, compensados = [], [], []
-    for it in unicos:
+    usados = Counter()                    # por (programa, código): cuántas apariciones ya se contaron
+    for it in plan:
         p, c = it["programa"], it["codigo"]
-        if emitido[p][c] > 0:
+        usados[(p, c)] += 1
+        if usados[(p, c)] <= emitido[p][c]:
             emitidos.append(it)
             continue
-        # ¿salió de más en otro programa? (más veces de las que estaba previsto allí)
-        donde = [q for q in emitido if q != p and emitido[q][c] > plan_count[q][c]]
-        if donde:
-            q = donde[0]
+        q = next((q for q in excedente if q != p and excedente[q][c] > 0), None)
+        if q:
+            excedente[q][c] -= 1
             compensados.append({**it, "programa_emision": q,
                                 "nombre_programa_emision": progs_t.get(q, progs_r.get(q, q))})
         else:
             no_emitidos.append(it)
+    unicos = plan
 
     pub = comparar_publicidad(publi_plan, publi_emit, progs_r, progs_t)
 

@@ -1,0 +1,5 @@
+# Archivos de trabajo diarios: no se suben
+pdfs/*.pdf
+informes/
+__pycache__/
+*.pyc
