@@ -24,6 +24,7 @@ except ImportError:
 # --- Reglas (ver reglas/reglas.md) -------------------------------------------
 CODIGO_ARTISTICO_MIN = 50000          # material desde 50000 = artística a emitir en el bloque del programa
 TIPOS_PUBLICIDAD = {"1020", "1030"}    # en telecontrol: avisos comerciales de tanda
+TIPOS_ARTISTICA = {"1001", "1002", "1003", "1004", "1005", "1006"}   # menciones, auspicios, zócalos, PNT
 TIPOS_NO_PROG = {"1003", "1005", "1006"}       # en telecontrol: PNT/menciones; si vienen SIN código, son "no programadas"
 EXCLUIR_CODIGOS = set()                # códigos a ignorar siempre (completar en reglas si hace falta)
 
@@ -49,6 +50,7 @@ def normalizar(s):
 RE_FECHA_RUTINA = re.compile(r"(Lunes|Martes|Mi.rcoles|Jueves|Viernes|S.bado|Domingo)\s+(\d{2}/\d{2}/\d{2})")
 RE_PROGRAMA = re.compile(r"^\s*(?P<hora>\d{1,2}:\d{2})\s+(?:[\d*]+'\s*(?:\d+\")?\s+|\*+\"\s+)?(?P<cod>\d{2,5})\s+(?P<nom>\S.*)$")
 RE_PUBLI = re.compile(r"(?P<dur>\d+)\"\s+(?P<desc>.+?)\s+(?P<cod>\d{4,6})\s+(\d{6})\s*$")   # aviso en tanda: código + n° de orden
+RE_PUBLI_NUEVO = re.compile(r"(?P<dur>\d+)\"\s+(?P<desc>.+?)\s+PA-CO0*(?P<cod>\d{4,6})\s*$")  # formato nuevo: PA-CO040004
 RE_ITEM = re.compile(r"(?P<dur>\d+)\"\s+(?P<desc>.+?)\s+(?P<cod>\d{5,7})(?:\s+\d{5,7})?\s*$")
 
 
@@ -81,7 +83,7 @@ def leer_rutina(texto):
         if actual is None or "FILESERV" in linea:
             continue
         if en_corte:
-            mpub = RE_PUBLI.search(linea)
+            mpub = RE_PUBLI.search(linea) or RE_PUBLI_NUEVO.search(linea)
             if mpub:
                 publicidad.append({"programa": actual, "nombre_programa": programas[actual],
                                    "codigo": mpub.group("cod"), "descripcion": mpub.group("desc").strip(),
@@ -120,6 +122,7 @@ def leer_telecontrol(texto):
     nombres = {}
     emitido = defaultdict(Counter)      # programa -> Counter(codigo)
     no_prog = defaultdict(list)         # programa -> [descripciones]
+    detalle = defaultdict(list)         # (programa, codigo) -> [(hora, descripcion)]
     actual = None
     sin_leer = []                       # renglones que parecen datos pero no se pudieron leer
     publi = defaultdict(list)           # programa -> [(codigo, descripcion, hora, obs)] tipo 1020
@@ -142,15 +145,17 @@ def leer_telecontrol(texto):
             continue
         if codigo:
             emitido[actual][codigo] += 1
+            if tipo in TIPOS_ARTISTICA:
+                detalle[(actual, codigo)].append((mf.group(1), desc))
         if tipo in TIPOS_NO_PROG and (not codigo or "NO PROG" in obs.upper()):
             no_prog[actual].append(f"{desc}  [{mf.group(1)}]")
-    return fecha, nombres, emitido, no_prog, sin_leer, publi
+    return fecha, nombres, emitido, no_prog, sin_leer, publi, detalle
 
 
 # --- COMPARACIÓN -------------------------------------------------------------
 def comparar(rutina_txt, tc_txt):
     f_r, progs_r, plan, sin_leer_r, publi_plan = leer_rutina(rutina_txt)
-    f_t, progs_t, emitido, no_prog, sin_leer, publi_emit = leer_telecontrol(tc_txt)
+    f_t, progs_t, emitido, no_prog, sin_leer, publi_emit, detalle_tc = leer_telecontrol(tc_txt)
 
     # Cada aparición cuenta: si un código está 2 veces en un programa, tienen que salir 2
     plan_count = defaultdict(Counter)
@@ -178,6 +183,18 @@ def comparar(rutina_txt, tc_txt):
         else:
             no_emitidos.append(it)
     unicos = plan
+
+    # Artística con código que salió de más y no compensó nada: también es "no programada"
+    for q in excedente:
+        for c, n in excedente[q].items():
+            if n > 0 and int(c) >= CODIGO_ARTISTICO_MIN and c not in EXCLUIR_CODIGOS:
+                for hora, d in detalle_tc.get((q, c), [])[-n:]:
+                    # el propio programa marcado con su código (ej. CAPSULA LOTO) no cuenta
+                    if normalizar(d).strip("./ ") in normalizar(progs_t.get(q, "")).strip("./ "):
+                        continue
+                    no_prog[q].append(f"{d} ({c})  [{hora}]")
+    for q in no_prog:
+        no_prog[q].sort(key=lambda x: [int(n) for n in x.rsplit("[", 1)[-1].rstrip("]").split(":")])
 
     pub = comparar_publicidad(publi_plan, publi_emit, progs_r, progs_t)
 

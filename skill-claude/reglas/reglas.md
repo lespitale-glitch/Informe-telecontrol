@@ -21,11 +21,14 @@ Estas reglas salen del informe hecho a mano del 06/10/26 y están programadas en
 ## ARTISTICA NO PROG
 - Programas donde el telecontrol muestra renglones de **tipo 1003, 1005 o 1006 sin código de material** (o marcados "NO PROG.EN RUTINA"). Ej. 10/10: 943 Claves para un mundo mejor tiene auspicios 1003 sin código.
 - No cuentan los tipo 1001 sin código (placas/menciones sueltas) ni los 9999 (invitados).
+- También es no programada la **artística con código** (tipos 1001 a 1006) que salió en un programa donde no estaba en la rutina, o salió más veces de las programadas, y no compensa a ningún otro programa. Ej. 13/10: 9 YUYOS YERBA MATE PNT (967808) salió en Andino y no estaba en la rutina. Se muestra con el código entre paréntesis.
+- No cuenta el propio programa marcado con su código (ej. CAPSULA LOTO 967338 en el programa CAPSULA LOTO).
 
 ## Excepciones (completar si hace falta)
 - Códigos a ignorar siempre: ninguno por ahora. Se agregan en `EXCLUIR_CODIGOS` dentro del script.
 
 ## PUBLICIDAD (avisos de tanda)
+- La rutina puede venir en dos formatos: el viejo (`20" SECCO VASOS 20  40004  106944`) y el nuevo, con número de evento y código `PA-CO` (`45 2.84 20" SECCO VASOS 20 PA-CO040004`). Se leen los dos; los `PA-PR` y `PA-ID` son promos/IDs y no cuentan.
 - En la rutina: renglones **dentro de los CORTES** que no son FILESERV y tienen código + número de orden (ej. `20" SECCO VASOS 20  40004  106944`).
 - En el telecontrol: renglones de **tipo 1020 y 1030**.
 - Se cuentan por programa y **cada aparición cuenta** (si SECCO está 2 veces en un programa, tienen que salir 2).
